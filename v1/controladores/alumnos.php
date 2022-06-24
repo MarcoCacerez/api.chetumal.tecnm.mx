@@ -131,7 +131,7 @@ class alumnos{
     }
 
     private function loguear(){
-        echo "loguear";
+        //echo "loguear";
     }
 
     private function autorizar(){
