@@ -17,39 +17,17 @@ class alumnos{
     const APELLIDO_MATERNO = "apellidoMaterno";
     const NUMERO_DE_CONTROL = "numeroDeControl";
     const CLAVE_API = "claveApi";
+    const ID_PROYECTO = "idProject";
     const CONTRASENA = "contrasena";
 
     public static function post($peticion){
         if ($peticion[0] == 'registro') {
             return (new alumnos())->registrar();
-        } else if ($peticion[0] == 'login') {
-            return (new alumnos())->loguear();
         } else {
             throw new ExcepcionApi(self::ESTADO_URL_INCORRECTA, "Url mal formada", 400);
         }
     }
-
-    public static function get($peticion){
-        if($peticion[0] == 'proyectos'){
-
-        }
-    }
-
-    public static function put($peticion){
-        $id = (new alumnos())->autorizar();
-        $body = file_get_contents('php://input');
-        $alumno = json_decode($body);
-        if ((new alumnos())->actualizar($id,$alumno) > 0) {
-            http_response_code(200);
-            return [
-                "estado" => self::ESTADO_MODIFICACION_EXITOSA,
-                "mensaje" => "Registro actualizado correctamente"
-            ];
-        }else{
-            throw new ExcepcionApi(self::ESTADO_CREACION_FALLIDA, "Ha ocurrido un error");
-        }
-    }
-
+    
     private function registrar(){
         $cuerpo = file_get_contents('php://input');
         $alumno = json_decode($cuerpo);
@@ -70,17 +48,16 @@ class alumnos{
                 break;
             default:
                 throw new ExcepcionApi(self::ESTADO_FALLA_DESCONOCIDA, "Falla desconocida", 400);
-        }
+            }
     }
-
+        
     private function crear($datosAlumno){
         $nombre = $datosAlumno->nombre;
         $apellidoPaterno = $datosAlumno->apellidoPaterno;
         $apellidoMaterno = $datosAlumno->apellidoMaterno;
         $numeroDeControl = $datosAlumno->numeroDeControl;
         $claveApi = self::generarClaveApi();
-        $contrasena = $datosAlumno->contrasena;
-        $contrasenaEncriptada = self::encriptarContrasena($contrasena);
+        $idProject = $datosAlumno->idProject;
 
         try {
 
@@ -93,7 +70,7 @@ class alumnos{
                 self::APELLIDO_MATERNO . "," .
                 self::NUMERO_DE_CONTROL . "," .
                 self::CLAVE_API . "," .
-                self::CONTRASENA . ")" .
+                self::ID_PROYECTO . ")" .
                 " VALUES(?,?,?,?,?,?)";
 
             $sentencia = $pdo->prepare($comando);
@@ -103,7 +80,7 @@ class alumnos{
             $sentencia->bindParam(3, $apellidoMaterno);
             $sentencia->bindParam(4, $numeroDeControl);
             $sentencia->bindParam(5, $claveApi);
-            $sentencia->bindParam(6, $contrasenaEncriptada);
+            $sentencia->bindParam(6, $idProject);
 
 
             $resultado = $sentencia->execute();
@@ -118,6 +95,64 @@ class alumnos{
         }
     }
 
+    public static function get($peticion){
+        
+    }
+
+    public static function put($peticion){
+        $id = (new alumnos())->autorizar();
+        $body = file_get_contents('php://input');
+        $alumno = json_decode($body);
+        if ((new alumnos())->actualizar($id,$alumno) > 0) {
+            http_response_code(200);
+            return [
+                "estado" => self::ESTADO_MODIFICACION_EXITOSA,
+                "mensaje" => "Registro actualizado correctamente"
+            ];
+        }else{
+            throw new ExcepcionApi(self::ESTADO_CREACION_FALLIDA, "Ha ocurrido un error");
+        }
+    }
+
+    private function actualizar($id,$alumno){
+        $nombre = $alumno->nombre;
+        $apellidoPaterno = $alumno->apellidoPaterno;
+        $apellidoMaterno = $alumno->apellidoMaterno;
+        $numeroDeControl = $alumno->numeroDeControl;
+        $idProject = $alumno->idProject;
+
+        try {
+            // Creando consulta UPDATE
+            $consulta = "UPDATE " . self::NOMBRE_TABLA .
+                " SET " . 
+                self::NOMBRE . "=?," .
+                self::APELLIDO_PATERNO . "=?," .
+                self::APELLIDO_MATERNO . "=?," .
+                self::NUMERO_DE_CONTROL . "=?," .
+                self::ID_PROYECTO . "=?" .
+                " WHERE " . self::ID . "=?";
+
+            // Preparar la sentencia
+            $sentencia = ConexionBD::obtenerInstancia()->obtenerBD()->prepare($consulta);
+
+            $sentencia->bindParam(1, $nombre);
+            $sentencia->bindParam(2, $apellidoPaterno);
+            $sentencia->bindParam(3, $apellidoMaterno);
+            $sentencia->bindParam(4, $numeroDeControl);
+            $sentencia->bindParam(5, $idProject);
+            $sentencia->bindParam(6, $id);
+            
+            // Ejecutar la sentencia
+            $sentencia->execute();
+
+            return $sentencia->rowCount();
+
+        } catch (PDOException $e) {
+            throw new ExcepcionApi(self::ESTADO_ERROR_BD, $e->getMessage());
+        }
+    }
+
+
     private function generarClaveApi(){
         return md5(microtime().rand());
     }
@@ -128,10 +163,6 @@ class alumnos{
         }else{
             return null;
         }
-    }
-
-    private function loguear(){
-        //echo "loguear";
     }
 
     private function autorizar(){
@@ -187,42 +218,5 @@ class alumnos{
         }
     }
 
-    private function actualizar($id,$alumno){
-        $nombre = $alumno->nombre;
-        $apellidoPaterno = $alumno->apellidoPaterno;
-        $apellidoMaterno = $alumno->apellidoMaterno;
-        $numeroDeControl = $alumno->numeroDeControl;
-        $contrasena = $alumno->contrasena;
-        $contrasenaEncriptada = self::encriptarContrasena($contrasena);
-
-        try {
-            // Creando consulta UPDATE
-            $consulta = "UPDATE " . self::NOMBRE_TABLA .
-                " SET " . 
-                self::NOMBRE . "=?," .
-                self::APELLIDO_PATERNO . "=?," .
-                self::APELLIDO_MATERNO . "=?," .
-                self::NUMERO_DE_CONTROL . "=?," .
-                self::CONTRASENA . "=?" .
-                " WHERE " . self::ID . "=?";
-
-            // Preparar la sentencia
-            $sentencia = ConexionBD::obtenerInstancia()->obtenerBD()->prepare($consulta);
-
-            $sentencia->bindParam(1, $nombre);
-            $sentencia->bindParam(2, $apellidoPaterno);
-            $sentencia->bindParam(3, $apellidoMaterno);
-            $sentencia->bindParam(4, $numeroDeControl);
-            $sentencia->bindParam(5, $contrasenaEncriptada);
-            $sentencia->bindParam(6, $id);
-            
-            // Ejecutar la sentencia
-            $sentencia->execute();
-
-            return $sentencia->rowCount();
-
-        } catch (PDOException $e) {
-            throw new ExcepcionApi(self::ESTADO_ERROR_BD, $e->getMessage());
-        }
-    }
+    
 }
