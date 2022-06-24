@@ -10,6 +10,9 @@ class alumnos{
     const ESTADO_PARAMETROS_INCORRECTOS = 8;
     const ESTADO_MODIFICACION_EXITOSA = 9;
 
+    const ESTADO_EXITO = 1;
+    const ESTADO_ERROR = 2;
+
     const NOMBRE_TABLA = "student";
     const ID = "id";
     const NOMBRE = "nombre";
@@ -19,6 +22,9 @@ class alumnos{
     const CLAVE_API = "claveApi";
     const ID_PROYECTO = "idProject";
     const CONTRASENA = "contrasena";
+
+    const TABLA_PROYECTO = "project";
+    const NOMBRE_PROYECTO = "nombre";
 
     public static function post($peticion){
         if ($peticion[0] == 'registro') {
@@ -96,7 +102,53 @@ class alumnos{
     }
 
     public static function get($peticion){
-        
+        if(empty($peticion[0])){
+            return (new alumnos())->obtenerAlumnos();
+        }else{
+            return (new alumnos())->obtenerAlumnos($peticion[0]);
+        }
+    }
+
+    private function obtenerAlumnos($idAlumno = NULL){
+        try {
+            if(!$idAlumno){
+
+                $sql = "SELECT" . 
+                    " s." . self::NOMBRE .
+                    " ,s." . self::APELLIDO_PATERNO .
+                    " ,s." . self::APELLIDO_MATERNO .
+                    " ,s." . self::NUMERO_DE_CONTROL . 
+                    " ,p." . self::NOMBRE_PROYECTO . " AS nombreProyecto" .
+                    " FROM " . self::NOMBRE_TABLA . " s " . 
+                    " JOIN " . self::TABLA_PROYECTO . " p ";
+
+                $comando = "SELECT * FROM " . self::NOMBRE_TABLA ;
+                $sentencia = ConexionBD::obtenerInstancia()->obtenerBD()->prepare($comando);
+            }else{
+                $comando = "SELECT * FROM " . self::NOMBRE_TABLA .
+                    " WHERE " . self::ID . "=?";
+                
+                // Preparar sentencia
+                $sentencia = ConexionBD::obtenerInstancia()->obtenerBD()->prepare($comando);
+                // Ligar idProyecto
+                $sentencia->bindParam(1, $idAlumno, PDO::PARAM_INT);
+            }
+
+            // Ejecutar sentencia preparada
+            if ($sentencia->execute()) {
+                http_response_code(200);
+                return
+                    [
+                        "estado" => self::ESTADO_EXITO,
+                        "datos" => $sentencia->fetchAll(PDO::FETCH_ASSOC)
+                    ];
+            } else
+                throw new ExcepcionApi(self::ESTADO_ERROR, "Se ha producido un error");
+
+            
+        } catch (PDOException $e) {
+            throw new ExcepcionApi(self::ESTADO_ERROR_BD, $e->getMessage());
+        }
     }
 
     public static function put($peticion){
