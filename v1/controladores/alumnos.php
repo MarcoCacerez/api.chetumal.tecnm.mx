@@ -10,8 +10,14 @@ class alumnos{
     const ESTADO_PARAMETROS_INCORRECTOS = 8;
     const ESTADO_MODIFICACION_EXITOSA = 9;
 
+    const ALUMNO_ELIMINADO = "Alumno eliminado correctamente";
+    const ALUMNO_MODIFICADO = "";
+    const ALUMNO_REGISTRADO = "¡Registro con éxito!";
+
+
     const ESTADO_EXITO = 1;
     const ESTADO_ERROR = 2;
+
 
     const NOMBRE_TABLA = "student";
     const ID = "id";
@@ -46,7 +52,7 @@ class alumnos{
                 return
                     [
                         "estado" => self::ESTADO_CREACION_EXITOSA,
-                        "mensaje" => utf8_encode("¡Registro con éxito!")
+                        "mensaje" => self::ALUMNO_REGISTRADO
                     ];
                 break;
             case self::ESTADO_CREACION_FALLIDA:
@@ -204,6 +210,42 @@ class alumnos{
         }
     }
 
+
+    public static function delete($peticion){
+        if (!empty($peticion[0])) {
+            if((new alumnos())->eliminar($peticion[0]) > 0){
+                http_response_code(200);
+                return [
+                    "estado" => self::ESTADO_EXITO,
+                    "mensaje" => self::ALUMNO_ELIMINADO
+                ];
+            }else{
+                throw new ExcepcionApi(self::ESTADO_PARAMETROS_INCORRECTOS,
+                    "El alumno al que intentas acceder no existe", 404);
+            }
+            
+        }else{
+            throw new ExcepcionApi(self::ESTADO_ERROR, "Se requiere del id del alumno a eliminar");
+        }
+    }
+
+    private function eliminar($idAlumno){
+        try {
+            $comando = "DELETE FROM " . self::NOMBRE_TABLA .
+                " WHERE " . self::ID . "=?";
+
+            // Preparar la sentencia
+            $sentencia = ConexionBD::obtenerInstancia()->obtenerBD()->prepare($comando);
+
+            $sentencia->bindParam(1, $idAlumno);
+
+            $sentencia->execute();
+
+            return $sentencia->rowCount();
+        } catch (PDOException $e) {
+            throw new ExcepcionApi(self::ESTADO_ERROR_BD, $e->getMessage());
+        }
+    }
 
     private function generarClaveApi(){
         return md5(microtime().rand());
